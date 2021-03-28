@@ -62,19 +62,8 @@ namespace CI
 
     public static class HashAlgorithm
     {
-        /// <summary>
-        /// https://stackoverflow.com/a/1646913
-        /// </summary>
-        public static int Combine<T1, T2>(T1 a, T2 b)
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 31 + a.GetHashCode();
-                hash = hash * 31 + b.GetHashCode();
-                return hash;
-            }
-        }
+        public static int CombineStrhashAndInthash(int strhash, int intval)
+            => strhash ^ intval;
     }
 
     namespace Structs
@@ -112,7 +101,8 @@ namespace CI
                 this.str = str;
                 this.scope = scope;
 
-                hashcode = HashAlgorithm.Combine(str, scope);
+                int strhash = str.GetHashCode();
+                hashcode = HashAlgorithm.CombineStrhashAndInthash(strhash, scope);
             }
 
             public AbsoluteMemoryIndex(PrehashedString str, int scope)
@@ -120,7 +110,7 @@ namespace CI
                 this.str = str.str;
                 this.scope = scope;
 
-                hashcode = HashAlgorithm.Combine(str, scope);
+                hashcode = HashAlgorithm.CombineStrhashAndInthash(str.hashcode, scope);
             }
 
             public override int GetHashCode()
