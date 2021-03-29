@@ -1,4 +1,5 @@
-﻿using System;
+﻿//Code by Dylan Rafael
+using System;
 
 namespace CI
 {
@@ -515,6 +516,7 @@ namespace CI
             public float GetMagnitude() => Compatability.SqrtF(GetMagnitudeSq());
         }
     }
+
     namespace Runtime
     {
         //USING STATEMENTS
@@ -550,7 +552,7 @@ namespace CI
                 set => SetVariable(MemoryPath.FromStr(idx), value);
             }
 
-#region (public methods) Scope Management
+            #region (public methods) Scope Management
             public void EnterScope()
                 => scopes.Add(new List<AbsoluteMemoryIndex>());
             public void ExitScope()
@@ -561,9 +563,9 @@ namespace CI
                 }
                 scopes.RemoveAt(scopes.Count - 1);
             }
-#endregion
+            #endregion
 
-#region (public methods) Variable Management
+            #region (public methods) Variable Management
             public ResultObject GetVariable(MemoryPath path)
             {
                 TableEntry cEntry = memory.EntryAt(path, currentScope);
@@ -649,17 +651,17 @@ namespace CI
                 TableEntry cEntry = memory.EntryAt(path, currentScope);
                 return Result(cEntry != null);
             }
-#endregion
+            #endregion
         }
 
         //UNIT BASE IMPLEMENTATION
-#region (public interface) IUnit
+        #region (public interface) IUnit
         public interface IUnit
         {
             public ResultObject Evaluate(ScriptManager manager);
         }
-#endregion
-#region (public, abstract) Basic Unit Types
+        #endregion
+        #region (public, abstract) Basic Unit Types
         public abstract class UnaryUnit<T> : IUnit
         {
             public readonly T val;
@@ -695,8 +697,8 @@ namespace CI
 
             public abstract ResultObject Evaluate(ScriptManager manager);
         }
-#endregion
-#region (public, abstract) Other Unit Types
+        #endregion
+        #region (public, abstract) Other Unit Types
         public abstract class PreparseUnaryUnit : UnaryUnit<IUnit>
         {
             public PreparseUnaryUnit(IUnit val) : base(val) {; }
@@ -858,10 +860,10 @@ namespace CI
             protected virtual ResultObject EvaluateType3Type2(ScriptManager manager, T3 l, T2 r) => Error(INVALID_CAST);
             protected virtual ResultObject EvaluateType3Type1(ScriptManager manager, T3 l, T1 r) => Error(INVALID_CAST);
         }
-#endregion
+        #endregion
 
         //BASIC UNITS
-#region (public, abstract? classes) Basic Units
+        #region (public, abstract? classes) Basic Units
         public abstract class FlowControlUnit : UnaryUnit<FlowControlType>
         {
             public FlowControlUnit(FlowControlType val) : base(val) {; }
@@ -947,10 +949,10 @@ namespace CI
             public override ResultObject Evaluate(ScriptManager manager)
                 => Result(val);
         }
-#endregion
+        #endregion
 
         //STRUCTURE MANAGEMENT
-#region (public classes) Table Management
+        #region (public classes) Table Management
         public class AnonTableBuild : PolynaryUnit<IUnit>
         {
             public readonly PrehashedString[] subids;
@@ -1003,10 +1005,10 @@ namespace CI
                 return AnonTableBuild.Get(manager, structDef.ids, structDef.flags, inputs);
             }
         }
-#endregion
+        #endregion
 
         //IDENTIFIER MANAGEMENT UNITS
-#region (public classes) Identifier Management Units
+        #region (public classes) Identifier Management Units
         public class IdentifierRead : UnaryUnit<MemoryPath>
         {
             public IdentifierRead(MemoryPath val) : base(val) {; }
@@ -1064,19 +1066,10 @@ namespace CI
                 return manager.VariableExists(val);
             }
         }
-#endregion
+        #endregion
 
         //BOOLEAN OPS
-#region (public, abstract? classes) Boolean Operation Units
-        public class BoolEquals : PreparseBinaryUnit
-        {
-            public BoolEquals(IUnit left, IUnit right) : base(left, right) {; }
-
-            protected override ResultObject EvaluateObjs(ScriptManager manager, object l, object r)
-            {
-                return Result(l.Equals(r));
-            }
-        }
+        #region (public, abstract? classes) Boolean Operation Units
         public abstract class BoolComparable : PreparseBinaryUnit<IComparable>
         {
             public BoolComparable(IUnit left, IUnit right) : base(left, right) {; }
@@ -1087,6 +1080,16 @@ namespace CI
             }
 
             public abstract bool Compare(int cmp);
+        }
+        public class BoolEquals : BoolComparable
+        {
+            public BoolEquals(IUnit left, IUnit right) : base(left, right) {; }
+            public override bool Compare(int cmp) => cmp == 0;
+        }
+        public class BoolNotEquals : BoolComparable
+        {
+            public BoolNotEquals(IUnit left, IUnit right) : base(left, right) {; }
+            public override bool Compare(int cmp) => cmp != 0;
         }
         public class BoolGreater : BoolComparable
         {
@@ -1126,10 +1129,10 @@ namespace CI
             protected override ResultObject EvaluateType1(ScriptManager manager, bool v)
                 => Result(!v);
         }
-#endregion
+        #endregion
 
         //BASE MATH OPERATIONS
-#region (public, abstract) Base Math Operators
+        #region (public, abstract) Base Math Operators
         public abstract class MathUnaryOperator : PreparseUnaryUnit<float, VectorTable>
         {
             public MathUnaryOperator(IUnit val) : base(val) {; }
@@ -1156,10 +1159,10 @@ namespace CI
             protected override ResultObject EvaluateType2Type2(ScriptManager manager, VectorTable l, VectorTable r)
                 => l.Zip(r, Op);
         }
-#endregion
+        #endregion
 
         //MATH OPERATORS
-#region (public classes) Math Operators
+        #region (public classes) Math Operators
         public class AddOperator : PreparseBinaryUnit<float, VectorTable, string>
         {
             public AddOperator(IUnit left, IUnit right) : base(left, right) {; }
@@ -1211,10 +1214,10 @@ namespace CI
             protected override ResultObject EvaluateType2(ScriptManager manager, VectorTable v)
                 => Result(v.GetMagnitude());
         }
-#endregion
+        #endregion
 
         //CONTROLS
-#region (public, abstract? classes) Conditional Units
+        #region (public, abstract? classes) Conditional Units
         public abstract class ConditionalUnit : UnaryUnit<IUnit>
         {
             public ConditionalUnit(IUnit cond) : base(cond) {; }
@@ -1310,10 +1313,10 @@ namespace CI
                 return Result();
             }
         }
-#endregion
+        #endregion
 
         //FUNCTIONS
-#region (public classes) Function Management
+        #region (public classes) Function Management
         public class FunctionCall : PreparseUnaryUnit<FunctionDefinition>
         {
             public readonly IUnit[] args;
@@ -1355,6 +1358,297 @@ namespace CI
 
             }
         }
-#endregion
+        #endregion
+    }
+    namespace Lexing
+    {
+        using System.Text.RegularExpressions;
+        using System.Collections.Generic;
+        using Structs;
+
+        public enum TokenType
+        {
+            IDENTIFIER,
+
+            STRING_LITERAL,
+            NUMBER,
+            BOOL,
+
+            TABLE,
+            STRUCTURE,
+            FUNCTION,
+
+            KEYWORD,
+            OPERATOR,
+
+            CONTROL,
+            LINEBREAK,
+        }
+
+        public readonly struct Token
+        {
+            public readonly TokenType type;
+            public readonly object    value;
+
+            public Token(TokenType type, object value)
+            {
+                this.type = type;
+                this.value = value;
+            }
+
+            public static Token WithoutValue(TokenType type)
+                => new Token(type, null);
+
+            public override string ToString()
+                => $"{type}: {value}";
+        }
+
+        public static class Lexer
+        {
+            #region (public, static props, method) Setup
+            public static bool NeedsSetup => Keywords.Length == 0;
+
+            public static Regex[] Keywords { get; private set; } = new Regex[0];
+            public static Regex[] Operators { get; private set; }
+            public static Regex[] Symbols { get; private set; }
+
+            public static Regex Comment { get; private set; }
+            public static Regex Identifier { get; private set; }
+
+            public static Regex NumericalLiteral { get; private set; }
+            public static Regex StringLiteral { get; private set; }
+
+            public static Regex Whitespace { get; private set; }
+            public static Regex Linebreak { get; private set; }
+
+            private static void SetupRegices()
+            {
+
+                Regex AllCases(string s)
+                    => new Regex(
+                        @"\G(" + Regex.Escape(s) + @")"
+                        );
+
+                Regex AroundIden(string s)
+                    => new Regex(
+                        @"\G(?:(?<=[\w\d\s\\]|^)(" + Regex.Escape(s) + @")(?=[\w\d\s\\]|$))"
+                        );
+
+                Regex AroundNoniden(string s)
+                    => new Regex(
+                        @"\G(?:(?<![\w\d])(" + Regex.Escape(s) + @")(?![\w\d]))"
+                        );
+
+                Keywords = new Regex[]
+                {
+
+                    AroundNoniden("var"),
+                    AroundNoniden("del"),
+
+                    AroundNoniden("if"),
+                    AroundNoniden("while"),
+
+                    AroundNoniden("new"),
+
+                    AroundNoniden("struct"),
+                    AroundNoniden("func"),
+
+                    AroundNoniden("readonly"),
+                    AroundNoniden("stable"),
+
+                };
+
+                Operators = new Regex[]
+                {
+
+                    AroundIden("="),
+
+                    AroundIden("+"),
+                    AroundIden("-"),
+                    AroundIden("*"),
+                    AroundIden("/"),
+                    AroundIden("%"),
+                    AroundIden("^"),
+
+                    AroundIden("&&"),
+                    AroundIden("||"),
+                    AroundIden("!"),
+
+                    AroundIden("=="),
+                    AroundIden("!="),
+                    AroundIden(">"),
+                    AroundIden("<"),
+                    AroundIden(">="),
+                    AroundIden("<="),
+
+                    AroundIden("|("),
+                    AroundIden(")|"),
+
+                };
+
+                Symbols = new Regex[]
+                {
+
+                    AllCases("("),
+                    AllCases(")"),
+
+                    AllCases("{"),
+                    AllCases("}"),
+
+                    AllCases(","),
+                    AllCases(":"),
+
+                };
+
+                Comment = new Regex(@"\G(?:(?:\/\*[\s\S]*?\*\/)|(?:\/\/[\s\S]*?\n))", RegexOptions.Multiline);
+                Identifier = new Regex(@"\G((?<!\W\d)(?:@|\$+)*([a-zA-Z_]\w*\.)*[a-zA-Z_]\w*(?!\W\d))");
+
+                NumericalLiteral = new Regex(@"\G((?<!\w)\d+(?:\.\d+)*(?!\w))");
+                StringLiteral = new Regex(@"\G(?:\""([^\""\n\r\\]|(?:\\n|\\r|\\\""|\\\\))*\"")", RegexOptions.Multiline);
+
+                Whitespace = new Regex(@"\G(?:(?: |\t|\\(?:\n|\r|\n\r))+)", RegexOptions.Multiline);
+                Linebreak = new Regex(@"\G(?:(?<!\\)[\n\r]\s*)", RegexOptions.Multiline);
+
+            }
+            #endregion
+
+            public static Token[] TokenizeText(string text, out bool error)
+            {
+                List<Token> tokens = new List<Token>();
+                error = false;
+
+                if (NeedsSetup)
+                    SetupRegices();
+
+                Match match;
+                int currentIndex = 0;
+
+                while (currentIndex < text.Length)
+                {
+                    match = Whitespace.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    match = Comment.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    match = Linebreak.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        tokens.Add(Token.WithoutValue(TokenType.LINEBREAK));
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    match = NumericalLiteral.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        tokens.Add(new Token(TokenType.NUMBER, float.Parse(match.Value)));
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    match = StringLiteral.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        tokens.Add(new Token(TokenType.STRING_LITERAL, ToLiteral(match.Value)));
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    for (int i = 0; i < Keywords.Length; i++)
+                    {
+                        match = Keywords[i].Match(text, currentIndex);
+                        if (match.Success)
+                        {
+                            tokens.Add(new Token(TokenType.KEYWORD, match.Value));
+                            currentIndex += match.Length;
+                            break;
+                        }
+                    }
+                    if (match.Success) continue;
+
+                    for (int i = 0; i < Operators.Length; i++)
+                    {
+                        match = Operators[i].Match(text, currentIndex);
+                        if (match.Success)
+                        {
+                            tokens.Add(new Token(TokenType.OPERATOR, match.Value));
+                            currentIndex += match.Length;
+                            break;
+                        }
+                    }
+                    if (match.Success) continue;
+
+                    for (int i = 0; i < Symbols.Length; i++)
+                    {
+                        match = Symbols[i].Match(text, currentIndex);
+                        if (match.Success)
+                        {
+                            tokens.Add(new Token(TokenType.CONTROL, match.Value));
+                            currentIndex += match.Length;
+                            break;
+                        }
+                    }
+                    if (match.Success) continue;
+
+                    match = Identifier.Match(text, currentIndex);
+                    if (match.Success)
+                    {
+                        tokens.Add(new Token(TokenType.IDENTIFIER, MemoryPath.FromStr(match.Value)));
+                        currentIndex += match.Length;
+                        continue;
+                    }
+
+                    error = true;
+                    break;
+                }
+
+                return tokens.ToArray();
+            }
+
+            public static string ToLiteral(string s)
+            {
+                System.Text.StringBuilder news = new System.Text.StringBuilder(string.Empty);
+
+                for (int i = 0; i < s.Length; i++)
+                {
+                    if (s[i] == '\\')
+                    {
+                        switch (s[i + 1])
+                        {
+                            case 'n':
+                            {
+                                news.Append('\n');
+                                break;
+                            }
+                            case 'r':
+                            {
+                                news.Append('\r');
+                                break;
+                            }
+                            case '\\':
+                            {
+                                news.Append('\\');
+                                break;
+                            }
+                        }
+                    }
+                    else
+                    {
+                        news.Append(s[i]);
+                    }
+                }
+
+                return news.ToString();
+            }
+        }
     }
 }
