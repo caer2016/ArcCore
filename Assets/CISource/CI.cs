@@ -1,73 +1,100 @@
-﻿//GLOBAL USINGS
-using System;
+﻿using System;
 
-using static CI.ExecResult;
-using static CI.Structs.ResultObject;
-
-//BASE NAMESPACE
 namespace CI
 {
-    public enum ExecResult
+    public static class Compatability
     {
-        OK,
+        public static int CombineHashes(int l, int r)
+        {
 
-        INVALID_SCOPE,
-        MISSING_OR_INVALID_VAR,
+#if CI_STANDALONE
+            return HashCode.Combine(l, r);
+#else
+            return l ^ r;
+#endif
 
-        CANNOT_DEFINE_UPSCOPE,
-        CANNOT_DELETE_UPSCOPE,
-        CANNOT_REDEFINE,
-        CANNOT_ADD_TO_NONSTRUCT,
+        }
+        public static float SqrtF(float v)
+        {
 
-        INVALID_CAST,
-        COMPARING_DIFFERING_TYPES,
+#if CI_STANDALONE
+            return MathF.Sqrt(v);
+#else
+            return UnityEngine.Mathf.Sqrt(v);
+#endif
 
-        NON_MATCHING_DICTS,
+        }
+        public static float PowF(float a, float b)
+        {
 
-        UNDEFINED_STRUCT,
-        INCORRECT_ARGUMENT_COUNT_FOR_STRUCT,
-        INCORRECT_ARGUMENT_COUNT_FOR_FUNCTION_CALL,
+#if CI_STANDALONE
+            return MathF.Pow(a, b);
+#else
+            return UnityEngine.Mathf.Pow(a, b);
+#endif
 
-        CONDITIONAL_IS_NOT_BOOL,
-
-        MISPLACED_CONTROL_FLOW_STATEMENT,
-
-        INTERNAL_ERROR
+        }
     }
 
-    [Flags]
-    public enum ModifierFlags
+    namespace Enums
     {
-        NONE = 0,
-        /// <summary>
-        /// Cannot be set after created
-        /// </summary>
-        READONLY = 1,
-        /// <summary>
-        /// Subvariables cannot be deleted or created
-        /// </summary>
-        STABLE = 2,
-        /// <summary>
-        /// Cannot be deleted by user code
-        /// Placed automatically on all function arguments
-        /// and inherent variables
-        /// </summary>
-        UNDELETABLE = 4,
-    }
-    public enum FlowControlType
-    {
-        BREAK,
-        CONTINUE
-    }
+        public enum ExecResult
+        {
+            OK,
 
-    public static class HashAlgorithm
-    {
-        public static int CombineStrhashAndInthash(int strhash, int intval)
-            => strhash ^ intval;
-    }
+            INVALID_SCOPE,
+            MISSING_OR_INVALID_VAR,
 
+            CANNOT_DEFINE_UPSCOPE,
+            CANNOT_DELETE_UPSCOPE,
+            CANNOT_REDEFINE,
+            CANNOT_ADD_TO_NONSTRUCT,
+
+            INVALID_CAST,
+            COMPARING_DIFFERING_TYPES,
+
+            NON_MATCHING_DICTS,
+
+            UNDEFINED_STRUCT,
+            INCORRECT_ARGUMENT_COUNT_FOR_STRUCT,
+            INCORRECT_ARGUMENT_COUNT_FOR_FUNCTION_CALL,
+
+            CONDITIONAL_IS_NOT_BOOL,
+
+            MISPLACED_CONTROL_FLOW_STATEMENT,
+
+            INTERNAL_ERROR
+        }
+
+        [Flags]
+        public enum ModifierFlags
+        {
+            NONE = 0,
+            /// <summary>
+            /// Cannot be set after created
+            /// </summary>
+            READONLY = 1,
+            /// <summary>
+            /// Subvariables cannot be deleted or created
+            /// </summary>
+            STABLE = 2,
+            /// <summary>
+            /// Cannot be deleted by user code
+            /// Placed automatically on all function arguments
+            /// and inherent variables
+            /// </summary>
+            UNDELETABLE = 4,
+        }
+        public enum FlowControlType
+        {
+            BREAK,
+            CONTINUE
+        }
+    }
     namespace Structs
     {
+        using Enums;
+        using static Enums.ExecResult;
         public readonly struct PrehashedString
         {
             public readonly string str;
@@ -101,8 +128,7 @@ namespace CI
                 this.str = str;
                 this.scope = scope;
 
-                int strhash = str.GetHashCode();
-                hashcode = HashAlgorithm.CombineStrhashAndInthash(strhash, scope);
+                hashcode = Compatability.CombineHashes(str.GetHashCode(), scope);
             }
 
             public AbsoluteMemoryIndex(PrehashedString str, int scope)
@@ -110,7 +136,7 @@ namespace CI
                 this.str = str.str;
                 this.scope = scope;
 
-                hashcode = HashAlgorithm.CombineStrhashAndInthash(str.hashcode, scope);
+                hashcode = Compatability.CombineHashes(str.hashcode, scope);
             }
 
             public override int GetHashCode()
@@ -188,9 +214,9 @@ namespace CI
         public readonly struct FunctionDefinition
         {
             public readonly PrehashedString[] argNames;
-            public readonly Main.UnitGroupReturnable code;
+            public readonly Runtime.UnitGroupReturnable code;
 
-            public FunctionDefinition(PrehashedString[] argNames, Main.UnitGroupReturnable code)
+            public FunctionDefinition(PrehashedString[] argNames, Runtime.UnitGroupReturnable code)
             {
                 this.argNames = argNames;
                 this.code = code;
@@ -238,10 +264,13 @@ namespace CI
     {
         //USING STATEMENTS
         using Structs;
+        using Enums;
         using System;
         using System.Collections;
         using System.Collections.Generic;
         using System.Linq;
+        using static Enums.ExecResult;
+        using static Structs.ResultObject;
         using ITableEnumerable = System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<Structs.PrehashedString, TableEntry>>;
         using ITableEnumerator = System.Collections.Generic.IEnumerator<System.Collections.Generic.KeyValuePair<Structs.PrehashedString, TableEntry>>;
         using MemoryTableUnderlying = System.Collections.Generic.Dictionary<Structs.AbsoluteMemoryIndex, TableEntry>;
@@ -483,14 +512,17 @@ namespace CI
             public float GetSum() => Aggregate((ref float agg, float n) => agg += n);
             public float GetAverage() => GetSum() / Length;
             public float GetMagnitudeSq() => Aggregate((ref float agg, float n) => agg += n * n);
-            public float GetMagnitude() => UnityEngine.Mathf.Sqrt(GetMagnitudeSq());
+            public float GetMagnitude() => Compatability.SqrtF(GetMagnitudeSq());
         }
     }
-    namespace Main
+    namespace Runtime
     {
         //USING STATEMENTS
         using Structs;
         using Tables;
+        using Enums;
+        using static Enums.ExecResult;
+        using static Structs.ResultObject;
         using System.Collections.Generic;
 
         //SCRIPT MANAGER
@@ -518,7 +550,7 @@ namespace CI
                 set => SetVariable(MemoryPath.FromStr(idx), value);
             }
 
-            #region (public methods) Scope Management
+#region (public methods) Scope Management
             public void EnterScope()
                 => scopes.Add(new List<AbsoluteMemoryIndex>());
             public void ExitScope()
@@ -529,9 +561,9 @@ namespace CI
                 }
                 scopes.RemoveAt(scopes.Count - 1);
             }
-            #endregion
+#endregion
 
-            #region (public methods) Variable Management
+#region (public methods) Variable Management
             public ResultObject GetVariable(MemoryPath path)
             {
                 TableEntry cEntry = memory.EntryAt(path, currentScope);
@@ -617,17 +649,17 @@ namespace CI
                 TableEntry cEntry = memory.EntryAt(path, currentScope);
                 return Result(cEntry != null);
             }
-            #endregion
+#endregion
         }
 
         //UNIT BASE IMPLEMENTATION
-        #region (public interface) IUnit
+#region (public interface) IUnit
         public interface IUnit
         {
             public ResultObject Evaluate(ScriptManager manager);
         }
-        #endregion
-        #region (public, abstract) Basic Unit Types
+#endregion
+#region (public, abstract) Basic Unit Types
         public abstract class UnaryUnit<T> : IUnit
         {
             public readonly T val;
@@ -663,8 +695,8 @@ namespace CI
 
             public abstract ResultObject Evaluate(ScriptManager manager);
         }
-        #endregion
-        #region (public, abstract) Other Unit Types
+#endregion
+#region (public, abstract) Other Unit Types
         public abstract class PreparseUnaryUnit : UnaryUnit<IUnit>
         {
             public PreparseUnaryUnit(IUnit val) : base(val) {; }
@@ -826,10 +858,10 @@ namespace CI
             protected virtual ResultObject EvaluateType3Type2(ScriptManager manager, T3 l, T2 r) => Error(INVALID_CAST);
             protected virtual ResultObject EvaluateType3Type1(ScriptManager manager, T3 l, T1 r) => Error(INVALID_CAST);
         }
-        #endregion
+#endregion
 
         //BASIC UNITS
-        #region (public, abstract? classes) Basic Units
+#region (public, abstract? classes) Basic Units
         public abstract class FlowControlUnit : UnaryUnit<FlowControlType>
         {
             public FlowControlUnit(FlowControlType val) : base(val) {; }
@@ -915,10 +947,10 @@ namespace CI
             public override ResultObject Evaluate(ScriptManager manager)
                 => Result(val);
         }
-        #endregion
+#endregion
 
         //STRUCTURE MANAGEMENT
-        #region (public classes) Table Management
+#region (public classes) Table Management
         public class AnonTableBuild : PolynaryUnit<IUnit>
         {
             public readonly PrehashedString[] subids;
@@ -971,10 +1003,10 @@ namespace CI
                 return AnonTableBuild.Get(manager, structDef.ids, structDef.flags, inputs);
             }
         }
-        #endregion
+#endregion
 
         //IDENTIFIER MANAGEMENT UNITS
-        #region (public classes) Identifier Management Units
+#region (public classes) Identifier Management Units
         public class IdentifierRead : UnaryUnit<MemoryPath>
         {
             public IdentifierRead(MemoryPath val) : base(val) {; }
@@ -1032,10 +1064,10 @@ namespace CI
                 return manager.VariableExists(val);
             }
         }
-        #endregion
+#endregion
 
         //BOOLEAN OPS
-        #region (public, abstract? classes) Boolean Operation Units
+#region (public, abstract? classes) Boolean Operation Units
         public class BoolEquals : PreparseBinaryUnit
         {
             public BoolEquals(IUnit left, IUnit right) : base(left, right) {; }
@@ -1094,10 +1126,10 @@ namespace CI
             protected override ResultObject EvaluateType1(ScriptManager manager, bool v)
                 => Result(!v);
         }
-        #endregion
+#endregion
 
         //BASE MATH OPERATIONS
-        #region (public, abstract) Base Math Operators
+#region (public, abstract) Base Math Operators
         public abstract class MathUnaryOperator : PreparseUnaryUnit<float, VectorTable>
         {
             public MathUnaryOperator(IUnit val) : base(val) {; }
@@ -1124,10 +1156,10 @@ namespace CI
             protected override ResultObject EvaluateType2Type2(ScriptManager manager, VectorTable l, VectorTable r)
                 => l.Zip(r, Op);
         }
-        #endregion
+#endregion
 
         //MATH OPERATORS
-        #region (public classes) Math Operators
+#region (public classes) Math Operators
         public class AddOperator : PreparseBinaryUnit<float, VectorTable, string>
         {
             public AddOperator(IUnit left, IUnit right) : base(left, right) {; }
@@ -1165,7 +1197,7 @@ namespace CI
         public class PowOperator : MathBinaryOperator
         {
             public PowOperator(IUnit left, IUnit right) : base(left, right) { }
-            public override float Op(float a, float b) => UnityEngine.Mathf.Pow(a, b);
+            public override float Op(float a, float b) => Compatability.PowF(a, b);
         }
         public class NegationOperator : MathUnaryOperator
         {
@@ -1179,10 +1211,10 @@ namespace CI
             protected override ResultObject EvaluateType2(ScriptManager manager, VectorTable v)
                 => Result(v.GetMagnitude());
         }
-        #endregion
+#endregion
 
         //CONTROLS
-        #region (public, abstract? classes) Conditional Units
+#region (public, abstract? classes) Conditional Units
         public abstract class ConditionalUnit : UnaryUnit<IUnit>
         {
             public ConditionalUnit(IUnit cond) : base(cond) {; }
@@ -1278,10 +1310,10 @@ namespace CI
                 return Result();
             }
         }
-        #endregion
+#endregion
 
         //FUNCTIONS
-        #region (public classes) Function Management
+#region (public classes) Function Management
         public class FunctionCall : PreparseUnaryUnit<FunctionDefinition>
         {
             public readonly IUnit[] args;
@@ -1323,6 +1355,6 @@ namespace CI
 
             }
         }
-        #endregion
+#endregion
     }
 }
