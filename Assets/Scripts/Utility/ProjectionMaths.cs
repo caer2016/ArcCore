@@ -89,7 +89,7 @@ namespace ArcCore.Utility
                 float2 projPosXZ = new float2(baseRay.origin.x - baseRay.direction.x * yratio, baseRay.origin.z - baseRay.direction.z * yratio);
 
                 //Check if cast falls out of acceptable range
-                if (-Constants.RenderFloorPositionRange >= projPosXZ.y && projPosXZ.y >= Constants.RenderFloorPositionRange)
+                if (-Constants.RenderFloorRange >= projPosXZ.y && projPosXZ.y >= Constants.RenderFloorRange)
                 {
                     //FIND X LENIENCY USING 0TH'S MAGIC
                     float deltaZ = camPos.z - projPosXZ.y;

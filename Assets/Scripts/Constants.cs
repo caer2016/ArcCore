@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ArcCore.Structs;
 
 namespace ArcCore
 {
@@ -13,7 +14,9 @@ namespace ArcCore
         public const float InputMinX = -8.5f;
         public const float InputMaxX =  8.5f;
         public const float ArcYZero  =  1f;
-        public const float RenderFloorPositionRange = 150f; //CHECK: IS THIS THE LEN OF THE FLOOR PRECISELY?
+
+        public const float RenderFloorRange = 150f;
+        public static readonly FixedQ7 RenderFloorRangeFQ7 = (FixedQ7)RenderFloorRange; //CHECK: IS THIS THE LEN OF THE FLOOR PRECISELY?
 
         public const int MaxPureWindow = 25;
         public const int PureWindow    = 50;

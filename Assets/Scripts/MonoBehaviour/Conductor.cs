@@ -4,12 +4,14 @@ using Unity.Collections;
 using System;
 using ArcCore.Utility;
 
+using ArcCore.Structs;
+
 namespace ArcCore.MonoBehaviours
 {
     public struct TimingEvent
     {
         public int timing;
-        public float floorPosition;
+        public FixedQ7 floorPosition;
         public float bpm;
     }
 
@@ -29,7 +31,7 @@ namespace ArcCore.MonoBehaviours
         public int receptorTime;
         public long timeOfLastMix;
         public int songLength;
-        public NativeArray<float> currentFloorPosition;
+        public NativeArray<FixedQ7> currentFloorPosition;
 
         public delegate void TimeCalculatedAction(float time);
         public event TimeCalculatedAction OnTimeCalculated;
@@ -72,7 +74,7 @@ namespace ArcCore.MonoBehaviours
             //precalculate floorposition value for timing events
             timingEventGroups = new List<List<TimingEvent>>(timingGroups.Count); 
 
-            currentFloorPosition = new NativeArray<float>(new float[timingGroups.Count], Allocator.Persistent);
+            currentFloorPosition = new NativeArray<FixedQ7>(new FixedQ7[timingGroups.Count], Allocator.Persistent);
 
             for (int i=0; i<timingGroups.Count; i++)
             {
@@ -96,20 +98,26 @@ namespace ArcCore.MonoBehaviours
 
             for (int j = 1; j < timingGroups[i].Count; j++)
             {
+                float ffpos = 
+                    timingGroups[i][j - 1].bpm * (timingGroups[i][j].timing - timingGroups[i][j - 1].timing);
+
+                if (!FixedQ7.NoOverflowOnConvert(ffpos))
+                    throw new OverflowException("Chart floorpos out of range [-2^63, 2^63-1]!");
+
+                FixedQ7 fpos = (FixedQ7)ffpos;
+
                 timingEventGroups[i].Add(new TimingEvent()
                 {
                     timing = timingGroups[i][j].timing,
-                    floorPosition = timingGroups[i][j - 1].bpm
-                                * (timingGroups[i][j].timing - timingGroups[i][j - 1].timing)
-                                + timingEventGroups[i][j - 1].floorPosition,
+                    floorPosition = fpos,
                     bpm = timingGroups[i][j].bpm
                 });
             }
         }
 
-        public float GetFloorPositionFromTiming(int timing, int timingGroup)
+        public FixedQ7 GetFloorPositionFromTiming(int timing, int timingGroup)
         {
-            if (timing<0) return timingEventGroups[0][0].bpm*timing / -1300;
+            if (timing<0) return (FixedQ7)timingEventGroups[0][0].bpm*timing / -1300;
 
             List<TimingEvent> group = timingEventGroups[timingGroup];
             //caching the index so we dont have to loop the entire thing every time
@@ -127,7 +135,7 @@ namespace ArcCore.MonoBehaviours
 
             groupIndexCache[timingGroup] = i;
 
-            return (group[i].floorPosition + (timing - group[i].timing) * group[i].bpm) / -1300;
+            return (group[i].floorPosition + (timing - group[i].timing) * (FixedQ7)group[i].bpm) / -1300;
         }
 
         public int GetTimingEventIndexFromTiming(int timing, int timingGroup)
@@ -156,7 +164,7 @@ namespace ArcCore.MonoBehaviours
 
         public int TimingEventListLength(int timingGroup)
             => timingEventGroups[timingGroup].Count;
-        public int GetFirstTimingFromFloorPosition(float floorposition, int timingGroup)
+        public int GetFirstTimingFromFloorPosition(FixedQ7 floorposition, int timingGroup)
         {
             int maxIndex = timingEventGroups[timingGroup].Count;
             floorposition *= -1300;
@@ -169,13 +177,13 @@ namespace ArcCore.MonoBehaviours
                 if ((curr.floorPosition < floorposition && next.floorPosition > floorposition)
                 ||  (curr.floorPosition > floorposition && next.floorPosition < floorposition))
                 {
-                    float result = (floorposition - curr.floorPosition) / curr.bpm + curr.timing;
+                    float result = (float)(floorposition - curr.floorPosition) / curr.bpm + curr.timing;
                     return Mathf.RoundToInt(result);
                 }
             }
 
             TimingEvent last = timingEventGroups[timingGroup][maxIndex-1];
-            float lastresult =  (floorposition - last.floorPosition) / last.bpm + last.timing;
+            float lastresult = (float)(floorposition - last.floorPosition) / last.bpm + last.timing;
             return Mathf.RoundToInt(lastresult);
         }
 

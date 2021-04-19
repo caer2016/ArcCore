@@ -3,6 +3,7 @@ using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
 using ArcCore.Data;
+using ArcCore.Structs;
 
 namespace ArcCore.MonoBehaviours.EntityCreation
 {
@@ -86,14 +87,14 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
             Entity lineEntity = entityManager.Instantiate(beatlineEntityPrefab);
 
-            float floorpos = Conductor.Instance.GetFloorPositionFromTiming(timing, 0);
+            FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(timing, 0);
 
             entityManager.SetComponentData<FloorPosition>(lineEntity, new FloorPosition(){
                 Value = floorpos
             });
 
-            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorPositionRange, 0);
-            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorPositionRange, 0);
+            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorRangeFQ7, 0);
+            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorRangeFQ7, 0);
             int appearTime = (t1 < t2) ? t1 : t2;
             int disappearTime = (t1 < t2) ? t2 : t1;
 

@@ -1,5 +1,6 @@
 ﻿using System;
 
+/*
 namespace ArcCore.Structs
 {
     public readonly struct float_xy_fixed_z : IEquatable<float_xy_fixed_z>
@@ -68,3 +69,4 @@ namespace ArcCore.Structs
         }
     }
 }
+*/

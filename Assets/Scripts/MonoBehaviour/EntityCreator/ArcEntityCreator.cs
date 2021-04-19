@@ -7,6 +7,7 @@ using Unity.Rendering;
 using UnityEngine;
 using ArcCore.Utility;
 using ArcCore.Data;
+using ArcCore.Structs;
 
 namespace ArcCore.MonoBehaviours.EntityCreation
 {
@@ -139,34 +140,44 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     float segmentLength = duration * v2;
                     int segmentCount = (int)(segmentLength == 0 ? 0 : duration / segmentLength) + 1;
 
+                    FixedQ7 startfpos;
                     float3 start;
+
+                    FixedQ7 endfpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
                     float3 end = new float3(
                         ArccoreConvert.GetWorldX(arc.startX),
                         ArccoreConvert.GetWorldY(arc.startY),
-                        Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup)
+                        (float)endfpos
                     );
 
                     for (int i = 0; i < segmentCount - 1; i++)
                     {
                         float t = (i + 1) * segmentLength;
+
+                        startfpos = endfpos;
                         start = end;
+
+                        endfpos = Conductor.Instance.GetFloorPositionFromTiming((int)(arc.timing + t), arc.timingGroup);
                         end = new float3(
                             ArccoreConvert.GetWorldX(ArccoreConvert.GetXAt(t / duration, arc.startX, arc.endX, arc.easing)),
                             ArccoreConvert.GetWorldY(ArccoreConvert.GetYAt(t / duration, arc.startY, arc.endY, arc.easing)),
-                            Conductor.Instance.GetFloorPositionFromTiming((int)(arc.timing + t), arc.timingGroup)
+                            (float)endfpos
                         );
 
-                        CreateSegment(arcColorMaterialInstance, start, end, arc.timingGroup, arcFunnelPtr);
+                        CreateSegment(arcColorMaterialInstance, start, startfpos, end, endfpos, arc.timingGroup, arcFunnelPtr);
                     }
 
+                    startfpos = endfpos;
                     start = end;
+
+                    endfpos = Conductor.Instance.GetFloorPositionFromTiming(arc.endTiming, arc.timingGroup);
                     end = new float3(
                         ArccoreConvert.GetWorldX(arc.endX),
                         ArccoreConvert.GetWorldY(arc.endY),
-                        Conductor.Instance.GetFloorPositionFromTiming(arc.endTiming, arc.timingGroup)
+                        (float)endfpos
                     );
 
-                    CreateSegment(arcColorMaterialInstance, start, end, arc.timingGroup, arcFunnelPtr);
+                    CreateSegment(arcColorMaterialInstance, start, startfpos, end, endfpos, arc.timingGroup, arcFunnelPtr);
                     CreateJudgeEntities(arc, colorId, arcFunnelPtr, createdJudgeEntities);
                     
                 }
@@ -181,7 +192,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
             return &funnel;
         }
 
-        private unsafe void CreateSegment(Material arcColorMaterialInstance, float3 start, float3 end, int timingGroup, ArcFunnel* arcFunnelPtr)
+        private unsafe void CreateSegment(Material arcColorMaterialInstance, float3 start, FixedQ7 startfpos, float3 end, FixedQ7 endfpos, int timingGroup, ArcFunnel* arcFunnelPtr)
         {
             Entity arcInstEntity = entityManager.Instantiate(arcNoteEntityPrefab);
             Entity arcShadowEntity = entityManager.Instantiate(arcShadowEntityPrefab);
@@ -193,7 +204,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
             FloorPosition fpos = new FloorPosition()
             {
-                Value = start.z
+                Value = startfpos
             };
 
             entityManager.SetComponentData<FloorPosition>(arcInstEntity, fpos);
@@ -209,7 +220,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
             float dx = start.x - end.x;
             float dy = start.y - end.y;
-            float dz = start.z - end.z;
+            float dz = (float)(startfpos - endfpos);
 
             LocalToWorld ltwArc = new LocalToWorld()
             {
@@ -239,8 +250,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
             entityManager.SetComponentData<ShaderCutoff>(arcInstEntity, CutoffUtils.Unjudged);
             entityManager.SetComponentData<ShaderRedmix>(arcInstEntity, new ShaderRedmix() { Value = 0f });
 
-            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(start.z + Constants.RenderFloorPositionRange, timingGroup);
-            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(end.z - Constants.RenderFloorPositionRange, timingGroup);
+            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(startfpos + Constants.RenderFloorRangeFQ7, timingGroup);
+            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(endfpos - Constants.RenderFloorRangeFQ7, timingGroup);
             int appearTime = (t1 < t2) ? t1 : t2;
             int disappearTime = (t1 < t2) ? t2 : t1;
 
@@ -283,7 +294,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
             {
                 Value = new float3(scaleX, scaleY, scaleZ)
             });
-            float floorpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
+            FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
             entityManager.AddComponentData<FloorPosition>(heightEntity, new FloorPosition()
             {
                 Value = floorpos
@@ -293,8 +304,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 Value = arc.timingGroup
             });
 
-            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorPositionRange, arc.timingGroup);
-            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorPositionRange, arc.timingGroup);
+            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorRangeFQ7, arc.timingGroup);
+            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorRangeFQ7, arc.timingGroup);
             int appearTime = (t1 < t2) ? t1 : t2;
 
             entityManager.SetComponentData<AppearTime>(heightEntity, new AppearTime(){
@@ -310,7 +321,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 material = material
             });
 
-            float floorpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
+            FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
             entityManager.SetComponentData<FloorPosition>(headEntity, new FloorPosition()
             {
                 Value = floorpos 
@@ -328,8 +339,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 Value = arc.timingGroup
             });
 
-            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorPositionRange, arc.timingGroup);
-            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorPositionRange, arc.timingGroup);
+            int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorRangeFQ7, arc.timingGroup);
+            int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorRangeFQ7, arc.timingGroup);
             int appearTime = (t1 < t2) ? t1 : t2;
 
             entityManager.SetComponentData<AppearTime>(headEntity, new AppearTime(){

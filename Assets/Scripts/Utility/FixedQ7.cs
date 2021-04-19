@@ -14,7 +14,7 @@ namespace ArcCore.Structs
         //Integer representation
         private readonly long rawValue;
 
-        #region Constants
+        #region Private Constants
         private const int SHF = 7 - 1; //Subtract one in order to account for one-indexed bits
 
         private const int ONE_REPR = 1 << SHF;
@@ -25,6 +25,27 @@ namespace ArcCore.Structs
         private const int DECMASK = 1 << SHF - 1;
 
         private const long HALF_REPR = 1 << PRESHF;
+        #endregion
+
+        #region Public MinMaxes
+        public static readonly FixedQ7 MinValue = new FixedQ7(long.MinValue);
+        public static readonly FixedQ7 MaxValue = new FixedQ7(long.MaxValue);
+
+        public static readonly long MinLong = (long)MinValue;
+        public static readonly long MaxLong = (long)MaxValue;
+        public static bool NoOverflowOnConvert(long v) => MinLong < v && v < MaxLong;
+
+        public static readonly ulong MaxULong = (ulong)MaxLong;
+        public static bool NoOverflowOnConvert(ulong v) => v < MaxULong;
+
+        public static readonly float MinFloat = (float)MinValue;
+        public static readonly float MaxFloat = (float)MaxValue;
+        public static bool NoOverflowOnConvert(float v) => MinFloat < v && v < MaxFloat;
+        public static bool NoOverflowOnConvert(double v) => MinFloat < v && v < MaxFloat;
+
+        public static readonly decimal MinDecimal = (decimal)MinValue;
+        public static readonly decimal MaxDecimal = (decimal)MaxValue;
+        public static bool NoOverflowOnConvert(decimal v) => MinDecimal < v && v < MaxDecimal;
         #endregion
 
         //Direct construction, private because it is not intended to be called by any users

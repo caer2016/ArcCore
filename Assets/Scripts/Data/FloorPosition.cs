@@ -1,3 +1,4 @@
+using ArcCore.Structs;
 using Unity.Entities;
 
 namespace ArcCore.Data
@@ -5,7 +6,7 @@ namespace ArcCore.Data
     [GenerateAuthoringComponent]
     public struct FloorPosition : IComponentData
     {
-        public float Value;
+        public FixedQ7 Value;
     }
 
 }

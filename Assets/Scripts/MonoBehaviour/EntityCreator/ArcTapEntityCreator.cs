@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using ArcCore.Utility;
 using ArcCore.Data;
+using ArcCore.Structs;
 
 namespace ArcCore.MonoBehaviours.EntityCreation
 {
@@ -67,7 +68,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     Value = new float3(x, 0, z)
                 });
 
-                float floorpos = Conductor.Instance.GetFloorPositionFromTiming(arctap.timing, arctap.timingGroup);
+                FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(arctap.timing, arctap.timingGroup);
                 FloorPosition floorPositionF = new FloorPosition()
                 {
                     Value = floorpos
@@ -89,8 +90,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     Value = shadowEntity
                 });
 
-                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorPositionRange, arctap.timingGroup);
-                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorPositionRange, arctap.timingGroup);
+                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorRangeFQ7, arctap.timingGroup);
+                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorRangeFQ7, arctap.timingGroup);
                 int appearTime = (t1 < t2) ? t1 : t2;
 
                 entityManager.SetComponentData<AppearTime>(tapEntity, new AppearTime(){ Value = appearTime });
@@ -153,7 +154,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 Value = quaternion.LookRotationSafe(direction, new Vector3(0,0,1))
             });
 
-            float floorpos = Conductor.Instance.GetFloorPositionFromTiming(arctap.timing, arctap.timingGroup);
+            FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(arctap.timing, arctap.timingGroup);
             entityManager.AddComponentData<FloorPosition>(lineEntity, new FloorPosition(){
                 Value = floorpos
             });

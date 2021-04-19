@@ -6,6 +6,7 @@ using UnityEngine;
 using ArcCore.Utility;
 using ArcCore.Data;
 using Unity.Collections;
+using ArcCore.Structs;
 
 namespace ArcCore.MonoBehaviours.EntityCreation
 {
@@ -46,7 +47,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     Value = new float3(x, y, z)
                 });
 
-                float floorpos = Conductor.Instance.GetFloorPositionFromTiming(tap.timing, tap.timingGroup);
+                FixedQ7 floorpos = Conductor.Instance.GetFloorPositionFromTiming(tap.timing, tap.timingGroup);
                 entityManager.SetComponentData(tapEntity, new FloorPosition(){
                     Value = floorpos 
                 });
@@ -55,8 +56,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     Value = tap.timingGroup
                 });
 
-                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorPositionRange, tap.timingGroup);
-                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorPositionRange, tap.timingGroup);
+                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos - Constants.RenderFloorRangeFQ7, tap.timingGroup);
+                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(floorpos + Constants.RenderFloorRangeFQ7, tap.timingGroup);
                 int appearTime = (t1 < t2) ? t1 : t2;
 
                 entityManager.SetComponentData(tapEntity, new AppearTime(){ Value = appearTime });

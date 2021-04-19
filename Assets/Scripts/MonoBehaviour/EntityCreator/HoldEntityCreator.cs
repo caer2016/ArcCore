@@ -5,6 +5,7 @@ using Unity.Mathematics;
 using UnityEngine;
 using ArcCore.Utility;
 using ArcCore.Data;
+using ArcCore.Structs;
 
 namespace ArcCore.MonoBehaviours.EntityCreation
 {
@@ -40,9 +41,9 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
                 const float scalex = 1;
                 const float scaley = 1;
-                float endFloorPosition = Conductor.Instance.GetFloorPositionFromTiming(hold.endTiming, hold.timingGroup);
-                float startFloorPosition = Conductor.Instance.GetFloorPositionFromTiming(hold.timing, hold.timingGroup);
-                float scalez = - endFloorPosition + startFloorPosition;
+                FixedQ7 endFloorPosition = Conductor.Instance.GetFloorPositionFromTiming(hold.endTiming, hold.timingGroup);
+                FixedQ7 startFloorPosition = Conductor.Instance.GetFloorPositionFromTiming(hold.timing, hold.timingGroup);
+                float scalez = (float)(-endFloorPosition + startFloorPosition);
 
                 entityManager.SetComponentData<Translation>(holdEntity, new Translation(){
                     Value = new float3(x, y, z)
@@ -65,8 +66,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 entityManager.SetComponentData<HoldLastJudge>(holdEntity, new HoldLastJudge(false));
 
                 //Appear and disappear time
-                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(startFloorPosition + Constants.RenderFloorPositionRange, 0);
-                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(endFloorPosition - Constants.RenderFloorPositionRange, 0);
+                int t1 = Conductor.Instance.GetFirstTimingFromFloorPosition(startFloorPosition + Constants.RenderFloorRangeFQ7, 0);
+                int t2 = Conductor.Instance.GetFirstTimingFromFloorPosition(endFloorPosition - Constants.RenderFloorRangeFQ7, 0);
                 int appearTime = (t1 < t2) ? t1 : t2;
                 int disappearTime = (t1 < t2) ? t2 : t1;
 
