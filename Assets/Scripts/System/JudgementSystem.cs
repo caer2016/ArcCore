@@ -12,6 +12,8 @@ using Unity.Mathematics;
 using ArcCore.MonoBehaviours.EntityCreation;
 using ArcCore;
 using ArcCore.Tags;
+using static JudgeManage;
+using System;
 
 [UpdateInGroup(typeof(SimulationSystemGroup))]
 public class JudgementSystem : SystemBase
@@ -19,7 +21,6 @@ public class JudgementSystem : SystemBase
     public static JudgementSystem Instance { get; private set; }
     public EntityManager entityManager;
     public NativeArray<int> currentArcFingers;
-    public NativeArray<AABB2D> laneAABB2Ds;
 
     public bool IsReady => currentArcFingers.IsCreated;
     public EntityQuery tapQuery, arcQuery, arctapQuery, holdQuery;
@@ -29,6 +30,8 @@ public class JudgementSystem : SystemBase
 
     BeginSimulationEntityCommandBufferSystem beginSimulationEntityCommandBufferSystem;
 
+    public delegate void EntityAction(Entity en);
+
     protected override void OnCreate()
     {
         Instance = this;
@@ -36,16 +39,6 @@ public class JudgementSystem : SystemBase
         entityManager = defaultWorld.EntityManager;
 
         beginSimulationEntityCommandBufferSystem = World.GetOrCreateSystem<BeginSimulationEntityCommandBufferSystem>();
-
-        laneAABB2Ds = new NativeArray<AABB2D>(
-            new AABB2D[] {
-                new AABB2D(new float2(ArccoreConvert.TrackToX(1), 0), new float2(Constants.LaneWidth, float.PositiveInfinity)),
-                new AABB2D(new float2(ArccoreConvert.TrackToX(2), 0), new float2(Constants.LaneWidth, float.PositiveInfinity)),
-                new AABB2D(new float2(ArccoreConvert.TrackToX(3), 0), new float2(Constants.LaneWidth, float.PositiveInfinity)),
-                new AABB2D(new float2(ArccoreConvert.TrackToX(4), 0), new float2(Constants.LaneWidth, float.PositiveInfinity))
-                    },
-            Allocator.Persistent
-            );
 
         holdQuery = GetEntityQuery(
                 typeof(HoldFunnelPtr),
@@ -78,6 +71,7 @@ public class JudgementSystem : SystemBase
                 typeof(WithinJudgeRange)
             );
     }
+
     public void SetupColors()
     {
         currentArcFingers = new NativeArray<int>(ArcEntityCreator.Instance.arcColors.Length, Allocator.Persistent);
@@ -85,7 +79,6 @@ public class JudgementSystem : SystemBase
     protected override void OnDestroy()
     {
         currentArcFingers.Dispose();
-        laneAABB2Ds.Dispose();
     }
     protected override unsafe void OnUpdate()
     {
@@ -96,121 +89,117 @@ public class JudgementSystem : SystemBase
         //Get data from statics
         int currentTime = (int)(Conductor.Instance.receptorTime / 1000f);
 
-        //Command buffering
-        var commandBuffer = beginSimulationEntityCommandBufferSystem.CreateCommandBuffer();
-
-        //Particles
-        NativeList<SkyParticleAction>   skyParticleActions   = new NativeList<SkyParticleAction>  (Allocator.TempJob);
-        NativeList<ComboParticleAction> comboParticleActions = new NativeList<ComboParticleAction>(Allocator.TempJob);
-        NativeList<TrackParticleAction> trackParticleActions = new NativeList<TrackParticleAction>(Allocator.TempJob);
-
-        //Score management data
-        int maxPureCount = ScoreManager.Instance.maxPureCount,
-            latePureCount = ScoreManager.Instance.latePureCount,
-            earlyPureCount = ScoreManager.Instance.earlyPureCount,
-            lateFarCount = ScoreManager.Instance.lateFarCount,
-            earlyFarCount = ScoreManager.Instance.earlyFarCount,
-            lostCount = ScoreManager.Instance.lostCount,
-            combo = ScoreManager.Instance.currentCombo;
-
-        void JudgeLost()
-        {
-            lostCount++;
-            combo = 0;
-        }
-        void JudgeMaxPure()
-        {
-            maxPureCount++;
-            combo++;
-        }
         void Judge(int time)
         {
             int timeDiff = time - currentTime;
             if (timeDiff > Constants.FarWindow)
-            {
-                lostCount++;
-                combo = 0;
-            }
+                ScoreManager.RegisterLost();
             else if (timeDiff > Constants.PureWindow)
-            {
-                earlyFarCount++;
-                combo++;
-            }
+                ScoreManager.RegisterEFar();
             else if (timeDiff > Constants.MaxPureWindow)
-            {
-                earlyPureCount++;
-                combo++;
-            }
+                ScoreManager.RegisterEPure();
             else if (timeDiff > -Constants.MaxPureWindow)
-            {
-                JudgeMaxPure();
-            }
+                ScoreManager.RegisterMPure();
             else if (timeDiff > -Constants.PureWindow)
+                ScoreManager.RegisterLPure();
+            else
+                ScoreManager.RegisterLFar();
+        }
+
+        void TapJudge(Entity en)
+        {
+            ChartTime chartTime = entityManager.GetComponentData<ChartTime>(en);
+            Judge(chartTime.value);
+
+            entityManager.DestroyEntity(en);
+        }
+        void ArctapJudge(Entity en)
+        {
+            ChartTime chartTime = entityManager.GetComponentData<ChartTime>(en);
+            Judge(chartTime.value);
+
+            entityManager.DestroyEntity(entityManager.GetComponentData<EntityReference>(en).Value);
+            entityManager.DestroyEntity(en);
+        }
+        void HoldJudge(Entity en)
+        {
+            ScoreManager.RegisterMPure();
+            entityManager.SetComponentData(en, new HoldLastJudge(true));
+
+            ChartHoldTime holdTime = entityManager.GetComponentData<ChartHoldTime>(en);
+            ChartTimeSpan timeSpan = entityManager.GetComponentData<ChartTimeSpan>(en);
+
+            if (!holdTime.Increment(timeSpan))
             {
-                latePureCount++;
-                combo++;
+                entityManager.RemoveComponent<WithinJudgeRange>(en);
+                entityManager.AddComponent<PastJudgeRange>(en);
             }
             else
             {
-                lateFarCount++;
-                combo++;
+                entityManager.SetComponentData(en, holdTime);
             }
-        } 
+        }
+
+        TouchPoint touch;
+
+        var commandBuffer = beginSimulationEntityCommandBufferSystem.CreateCommandBuffer();
 
         //Execute for each touch
         for (int i = 0; i < InputManager.MaxTouches; i++)
         {
-            TouchPoint touch = InputManager.Get(i);
-            bool tapped = false;
+            touch = InputManager.Get(i);
 
-            //Track taps
-            if (touch.TrackRangeValid) {
+            double minTime = double.MaxValue;
+            Entity minEntity = Entity.Null;
+            EntityAction minCall = delegate(Entity _){};
+
+            //Track lane notes
+            if (touch.TrackRangeValid)
+            {
 
                 //Hold notes
-                Entities.WithAll<WithinJudgeRange>().ForEach(
+                Entities.WithAll<WithinJudgeRange>().WithoutBurst().ForEach(
 
-                    (Entity entity, ref HoldLastJudge held, ref ChartHoldTime holdTime, ref HoldLastJudge lastJudge, in ChartTimeSpan span, in ChartPosition position)
+                    (Entity en, ref HoldIsHeld held, ref ChartHoldTime holdTime, ref HoldLastJudge lastJudge, in ChartTimeSpan span, in ChartPosition position)
 
                         =>
 
                     {
-                        //Invalidate holds if they require a tap and this touch has been parsed as a tap already
-                        if (!held.value && tapped) return;
-
                         //Invalidate holds out of time range
                         if (!holdTime.CheckStart(Constants.FarWindow)) return;
-
-                        //Disable judgenotes
-                        void Disable()
+                        
+                        //Local function
+                        void Increment(ref ChartHoldTime ht, in ChartTimeSpan s)
                         {
-                            commandBuffer.RemoveComponent<WithinJudgeRange>(entity);
-                            commandBuffer.AddComponent<PastJudgeRange>(entity);
+                            if (!ht.Increment(s))
+                            {
+                                entityManager.RemoveComponent<WithinJudgeRange>(en);
+                                entityManager.AddComponent<PastJudgeRange>(en);
+                            }
                         }
 
                         //Increment or kill holds out of time for judging
                         if (holdTime.CheckOutOfRange(currentTime))
                         {
-                            JudgeLost();
+                            ScoreManager.RegisterLost();
                             lastJudge.value = false;
 
-                            if (!holdTime.Increment(span)) 
-                                Disable();
+                            Increment(ref holdTime, in span);
                         }
 
                         //Invalidate holds not in range; should also rule out all invalid data, i.e. positions with a lane of -1
                         if (!touch.trackRange.Contains(position.lane)) return;
 
                         //Holds not requiring a tap
-                        if(held.value)
+                        if (held.value)
                         {
                             //If valid:
                             if (touch.status != TouchPoint.Status.RELEASED)
                             {
-                                JudgeMaxPure();
+                                ScoreManager.RegisterMPure();
                                 lastJudge.value = true;
 
-                                if (!holdTime.Increment(span)) 
-                                    Disable();
+                                Increment(ref holdTime, in span);
                             }
                             //If invalid:
                             else
@@ -219,91 +208,79 @@ public class JudgementSystem : SystemBase
                             }
                         }
                         //Holds requiring a tap
-                        else if(touch.status == TouchPoint.Status.TAPPED)
+                        else if (touch.status == TouchPoint.Status.TAPPED && holdTime.time < minTime)
                         {
-                            JudgeMaxPure();
-                            lastJudge.value = true;
-
-                            if (!holdTime.Increment(span)) 
-                                Disable();
-
-                            tapped = true;
+                            minTime = holdTime.time;
+                            minEntity = en;
+                            minCall = HoldJudge;
                         }
                     }
 
-                );
+                ).Run();
 
-                if (!tapped) {
-                    //Tap notes; no EntityReference, those only exist on arctaps
-                    Entities.WithAll<WithinJudgeRange>().WithNone<EntityReference>().ForEach(
-
-                        (Entity entity, in ChartTime time, in ChartPosition position)
-
-                            =>
-
-                        {
-                            //Invalidate if already tapped
-                            if (tapped) return;
-
-                            //Increment or kill holds out of time for judging
-                            if (time.CheckOutOfRange(currentTime))
-                            {
-                                JudgeLost();
-                                entityManager.DestroyEntity(entity);
-                            }
-
-                            //Invalidate if not in range of a tap; should also rule out all invalid data, i.e. positions with a lane of -1
-                            if (!touch.trackRange.Contains(position.lane)) return;
-
-                            //Register tap lul
-                            Judge(time.value);
-                            tapped = true;
-
-                            //Destroy tap
-                            entityManager.DestroyEntity(entity);
-                        }
-
-                    );
-                }
-
-            }
-
-            //Refuse to judge arctaps if above checks have found a tap already
-            if (!tapped)
-            {
                 //Tap notes; no EntityReference, those only exist on arctaps
-                Entities.WithAll<WithinJudgeRange>().ForEach(
+                Entities.WithAll<WithinJudgeRange>().WithNone<EntityReference>().WithoutBurst().ForEach(
 
-                    (Entity entity, in ChartTime time, in ChartPosition position, in EntityReference enRef)
+                    (Entity en, in ChartTime time, in ChartPosition position)
 
                         =>
 
                     {
-                        //Invalidate if already tapped
-                        if (tapped) return;
-
-                        //Increment or kill holds out of time for judging
+                        //Increment or kill taps out of time for judging
                         if (time.CheckOutOfRange(currentTime))
                         {
-                            JudgeLost();
-                            entityManager.DestroyEntity(entity);
-                            entityManager.DestroyEntity(enRef.Value);
+                            ScoreManager.RegisterLost();
+                            commandBuffer.DestroyEntity(en);
                         }
 
                         //Invalidate if not in range of a tap; should also rule out all invalid data, i.e. positions with a lane of -1
-                        if (!touch.inputPlane.CollidesWith(new AABB2D(position.xy - arctapBoxExtents, position.xy + arctapBoxExtents))) 
-                            return;
+                        if (!touch.trackRange.Contains(position.lane)) return;
 
                         //Register tap lul
-                        Judge(time.value);
-                        tapped = true;
-
-                        //Destroy tap
-                        entityManager.DestroyEntity(entity);
+                        if (time.value < minTime)
+                        {
+                            minTime = time.value;
+                            minEntity = en;
+                            minCall = TapJudge;
+                        }
                     }
 
-                );
+                ).Run();
             }
+
+            //Arctap notes
+            Entities.WithAll<WithinJudgeRange>().WithoutBurst().ForEach(
+
+                (Entity en, in ChartTime time, in ChartPosition position, in EntityReference enRef)
+
+                    =>
+
+                {
+                    //Increment or kill holds out of time for judging
+                    if (time.CheckOutOfRange(currentTime))
+                    {
+                        ScoreManager.RegisterLost();
+                        commandBuffer.DestroyEntity(en);
+                        commandBuffer.DestroyEntity(enRef.Value);
+                    }
+
+                    //Invalidate if not in range of a tap;
+                    if (!touch.inputPlane.CollidesWith(new AABB2D(position.xy - arctapBoxExtents, position.xy + arctapBoxExtents)))
+                        return;
+
+                    //If minimum, set process
+                    if (time.value < minTime)
+                    {
+                        minTime = time.value;
+                        minEntity = en;
+                        minCall = ArctapJudge;
+                    }
+                }
+
+            ).Run();
+
+            //Call correct function; if no changes have occurred then minCall(minEntity) resolves to {;}
+            minCall(minEntity);
 
         }
 
@@ -405,11 +382,11 @@ public class JudgementSystem : SystemBase
                     // Kill arc judger
                     if (arcFunnelPtrD->isRed)
                     {
-                        ScoreManager.Instance.AddJudge(JudgeManage.JudgeType.LOST);
+                        ScoreManager.Instance.AddJudge(JudgeType.LOST);
                     }
                     else
                     {
-                        ScoreManager.Instance.AddJudge(JudgeManage.JudgeType.MAX_PURE);
+                        ScoreManager.Instance.AddJudge(JudgeType.MAX_PURE);
                     }
 
                     entityManager.AddComponent(entity, typeof(Disabled));
@@ -420,16 +397,6 @@ public class JudgementSystem : SystemBase
 
         // Destroy array after use
         arcEns.Dispose();
-
-        // Repopulate managed data
-        ScoreManager.Instance.currentCombo = combo;
-        ScoreManager.Instance.maxPureCount = maxPureCount;
-        ScoreManager.Instance.latePureCount = latePureCount;
-        ScoreManager.Instance.lateFarCount = lateFarCount;
-        ScoreManager.Instance.earlyPureCount = earlyPureCount;
-        ScoreManager.Instance.earlyFarCount = earlyFarCount;
-        ScoreManager.Instance.lostCount = lostCount;
-
 
     }
 }

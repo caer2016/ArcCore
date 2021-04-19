@@ -18,9 +18,12 @@ namespace ArcCore.MonoBehaviours
 
         }
 
-        public void ParseParticle(IParticleAction particleAction)
+        public static void ParseParticle(IParticleAction particleAction)
+            => Instance.ParseParticleI(particleAction);
+
+        private void ParseParticleI(IParticleAction particleAction)
         {
-            //TODO
+            //TODO: THIS
         }
     }
 }

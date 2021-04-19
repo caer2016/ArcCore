@@ -15,6 +15,8 @@ GameObject:
   - component: {fileID: 3723171247641788700}
   - component: {fileID: -3151445031504976581}
   - component: {fileID: 5650059561956330298}
+  - component: {fileID: 7929553078488974746}
+  - component: {fileID: 9062885977211982443}
   m_Layer: 0
   m_Name: TapPrefab
   m_TagString: Untagged
@@ -95,7 +97,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c90d8617e11b6f444b10dd4a6f3b6e3a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  Value: 0
 --- !u!114 &3723171247641788700
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -135,3 +136,32 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Value: {fileID: 0}
+--- !u!114 &7929553078488974746
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2994907523628847089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b72e210d3d5e25043b460626b0036c59, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  value: 0
+--- !u!114 &9062885977211982443
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2994907523628847089}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5ee91f93e77a0cd4e9c35b1a62b6212e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  xy:
+    x: 0
+    y: 0
+  lane: 0

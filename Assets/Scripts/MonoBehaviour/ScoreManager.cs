@@ -22,6 +22,16 @@ namespace ArcCore.MonoBehaviours
             lostCount,
             currentCombo;
 
+        public static void ResetCombo() => Instance.currentCombo = 0;
+        public static void AppendCombo() => Instance.currentCombo++;
+
+        public static void RegisterMPure() { Instance.maxPureCount++; AppendCombo(); }
+        public static void RegisterLPure() { Instance.latePureCount++; AppendCombo(); }
+        public static void RegisterEPure() { Instance.earlyPureCount++; AppendCombo(); }
+        public static void RegisterLFar() { Instance.lateFarCount++; AppendCombo(); }
+        public static void RegisterEFar() { Instance.earlyFarCount++; AppendCombo(); }
+        public static void RegisterLost() { Instance.lostCount++; ResetCombo(); }
+
         [HideInInspector] public float currentScore;
 
         public Text textUI;
@@ -31,6 +41,7 @@ namespace ArcCore.MonoBehaviours
             Instance = this;
         }
 
+        [System.Obsolete]
         public void AddJudge(JudgeManage.JudgeType type)
         {
             switch(type)
