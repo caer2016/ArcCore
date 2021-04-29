@@ -1,0 +1,64 @@
+using Unity.Burst;
+using Unity.Collections;
+using Unity.Entities;
+using Unity.Jobs;
+using Unity.Mathematics;
+using Unity.Transforms;
+using ArcCore.Components;
+using ArcCore.MonoBehaviours;
+using ArcCore.Tags;
+using Unity.Rendering;
+
+[UpdateAfter(typeof(JudgementSystem))]
+public class ShaderParamsApplySystem : SystemBase
+{
+
+    protected unsafe override void OnUpdate()
+    {
+        EntityManager entityManager = EntityManager;
+        int currentTime = Conductor.Instance.receptorTime;
+
+        //ARCS
+        Entities.WithAll<WithinJudgeRange>().ForEach(
+
+            (ref ShaderCutoff cutoff, ref ShaderRedmix redmix, in ArcFunnelPtr arcFunnelPtr)
+
+                =>
+
+            {
+                ArcFunnel* arcFunnelPtrD = arcFunnelPtr.Value;
+
+                if (arcFunnelPtrD->isRed)
+                {
+                    redmix.Value = math.min(redmix.Value + 0.08f, 1);
+                }
+                else
+                {
+                    redmix.Value = 0;
+                }
+
+                cutoff.Value = (float)arcFunnelPtrD->visualState;
+            }
+
+        )
+            .WithName("ArcShaders")
+            .Schedule();
+
+        //TRACES
+        Entities.WithAll<WithinJudgeRange>().ForEach(
+
+            (ref ShaderCutoff cutoff, in ChartTime time)
+
+                =>
+
+            {
+                cutoff.Value = time.value < currentTime ? 1f : 0f;
+            }
+
+        )
+            .WithName("TraceShaders")
+            .Schedule();
+
+        //HOLDS: @TODO: FIGURE THIS OUT!!!!! NOT CURRENTLY IMPLEMENTED!!!!
+    }
+}
