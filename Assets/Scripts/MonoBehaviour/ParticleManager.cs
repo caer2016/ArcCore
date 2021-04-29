@@ -6,7 +6,7 @@ namespace ArcCore.MonoBehaviours
 {
     public class ParticleManager : MonoBehaviour
     {
-        public static ParticleManager Instance { get; private set; }
+        private static ParticleManager Instance { get; private set; }
 
         void Start()
         {

@@ -29,8 +29,13 @@ public class JudgementSystem : SystemBase
     public static readonly float2 arctapBoxExtents = new float2(4f, 1f); //DUMMY VALUES
 
     BeginSimulationEntityCommandBufferSystem beginSimulationEntityCommandBufferSystem;
-
-    public delegate void EntityAction(Entity en);
+    public enum Taptype
+    {
+        Nil,
+        ARCTAP,
+        TAP,
+        HOLD_HEAD
+    }
 
     protected override void OnCreate()
     {
@@ -89,7 +94,7 @@ public class JudgementSystem : SystemBase
         //Get data from statics
         int currentTime = (int)(Conductor.Instance.receptorTime / 1000f);
 
-        void Judge(int time)
+        void JudgeFromTime(int time)
         {
             int timeDiff = time - currentTime;
             if (timeDiff > Constants.FarWindow)
@@ -109,14 +114,14 @@ public class JudgementSystem : SystemBase
         void TapJudge(Entity en)
         {
             ChartTime chartTime = entityManager.GetComponentData<ChartTime>(en);
-            Judge(chartTime.value);
+            JudgeFromTime(chartTime.value);
 
             entityManager.DestroyEntity(en);
         }
         void ArctapJudge(Entity en)
         {
             ChartTime chartTime = entityManager.GetComponentData<ChartTime>(en);
-            Judge(chartTime.value);
+            JudgeFromTime(chartTime.value);
 
             entityManager.DestroyEntity(entityManager.GetComponentData<EntityReference>(en).Value);
             entityManager.DestroyEntity(en);
@@ -140,18 +145,16 @@ public class JudgementSystem : SystemBase
             }
         }
 
-        TouchPoint touch;
-
         var commandBuffer = beginSimulationEntityCommandBufferSystem.CreateCommandBuffer();
 
         //Execute for each touch
         for (int i = 0; i < InputManager.MaxTouches; i++)
         {
-            touch = InputManager.Get(i);
+            TouchPoint touch = InputManager.Get(i);
 
             double minTime = double.MaxValue;
             Entity minEntity = Entity.Null;
-            EntityAction minCall = delegate(Entity _){};
+            Taptype taptype = Taptype.Nil;
 
             //Track lane notes
             if (touch.TrackRangeValid)
@@ -212,7 +215,7 @@ public class JudgementSystem : SystemBase
                         {
                             minTime = holdTime.time;
                             minEntity = en;
-                            minCall = HoldJudge;
+                            taptype = Taptype.HOLD_HEAD;
                         }
                     }
 
@@ -241,7 +244,7 @@ public class JudgementSystem : SystemBase
                         {
                             minTime = time.value;
                             minEntity = en;
-                            minCall = TapJudge;
+                            taptype = Taptype.TAP;
                         }
                     }
 
@@ -273,17 +276,24 @@ public class JudgementSystem : SystemBase
                     {
                         minTime = time.value;
                         minEntity = en;
-                        minCall = ArctapJudge;
+                        taptype = Taptype.ARCTAP;
                     }
                 }
 
             ).Run();
 
-            //Call correct function; if no changes have occurred then minCall(minEntity) resolves to {;}
-            minCall(minEntity);
+            //Call correct function;
+            switch(taptype)
+            {
+                case Taptype.ARCTAP    : ArctapJudge(minEntity) ; break;
+                case Taptype.TAP       : TapJudge(minEntity)    ; break;
+                case Taptype.HOLD_HEAD : HoldJudge(minEntity)   ; break;
+                default                                         : break;
+            }
 
         }
 
+        //TO BE REPLACED
         // Handle arc fingers once they are released //
         for(int i = 0; i < currentArcFingers.Length; i++)
         {
