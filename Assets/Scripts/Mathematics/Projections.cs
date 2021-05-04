@@ -1,4 +1,5 @@
-﻿using Unity.Mathematics;
+﻿using ArcCore.Structures;
+using Unity.Mathematics;
 using UnityEngine;
 
 namespace ArcCore.Mathematics

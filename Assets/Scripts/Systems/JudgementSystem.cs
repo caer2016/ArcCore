@@ -137,7 +137,7 @@ public class JudgementSystem : SystemBase
             {
 
                 //Hold notes
-                Entities.WithAll<WithinJudgeRange>().WithoutBurst().ForEach(
+                Entities.WithAll<WithinJudgeRange>().WithStructuralChanges().WithoutBurst().ForEach(
 
                     (Entity en, ref HoldIsHeld held, ref ChartHoldTime holdTime, ref HoldLastJudge lastJudge, in ChartTimeSpan span, in ChartPosition position)
 
@@ -146,16 +146,6 @@ public class JudgementSystem : SystemBase
                     {
                         //Invalidate holds out of time range
                         if (!holdTime.CheckStart(Constants.FarWindow)) return;
-                        
-                        //Local function
-                        void Increment(ref ChartHoldTime ht, in ChartTimeSpan s)
-                        {
-                            if (!ht.Increment(s))
-                            {
-                                entityManager.RemoveComponent<WithinJudgeRange>(en);
-                                entityManager.AddComponent<PastJudgeRange>(en);
-                            }
-                        }
 
                         //Increment or kill holds out of time for judging
                         if (holdTime.CheckOutOfRange(currentTime))
@@ -163,7 +153,11 @@ public class JudgementSystem : SystemBase
                             ScoreManager.RegisterLost();
                             lastJudge.value = false;
 
-                            Increment(ref holdTime, in span);
+                            if (!holdTime.Increment(span))
+                            {
+                                entityManager.RemoveComponent<WithinJudgeRange>(en);
+                                entityManager.AddComponent<PastJudgeRange>(en);
+                            }
                         }
 
                         //Invalidate holds not in range; should also rule out all invalid data, i.e. positions with a lane of -1
@@ -178,7 +172,11 @@ public class JudgementSystem : SystemBase
                                 ScoreManager.RegisterMPure();
                                 lastJudge.value = true;
 
-                                Increment(ref holdTime, in span);
+                                if (!holdTime.Increment(span))
+                                {
+                                    entityManager.RemoveComponent<WithinJudgeRange>(en);
+                                    entityManager.AddComponent<PastJudgeRange>(en);
+                                }
                             }
                             //If invalid:
                             else

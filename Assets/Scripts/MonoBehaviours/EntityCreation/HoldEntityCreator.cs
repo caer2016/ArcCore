@@ -72,7 +72,8 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                 int disappearTime = (t1 < t2) ? t2 : t1;
 
                 entityManager.SetComponentData<AppearTime>(holdEntity, new AppearTime(){ Value = appearTime });
-                entityManager.SetComponentData<DisappearTime>(holdEntity, new DisappearTime(){ Value = disappearTime });
+                //entityManager.SetComponentData<DisappearTime>(holdEntity, new DisappearTime(){ Value = disappearTime });
+                //error? ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
                 //Judge entities
                 TimingEvent timingEvent = Conductor.Instance.GetTimingEventFromTiming(hold.timing, hold.timingGroup);
