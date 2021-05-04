@@ -1,11 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Text;
 using System.Diagnostics.CodeAnalysis;
 
 namespace ArcCore.Mathematics
 {
     [SuppressMessage(
-        "Style", 
-        "IDE1006:Naming Styles", 
+        "Style",
+        "IDE1006:Naming Styles",
         Justification = "Type is intendended to behave similar to a built-in type."
     )]
     public readonly struct fixedQ7 : IComparable, IComparable<fixedQ7>, IEquatable<fixedQ7>
@@ -116,12 +118,14 @@ namespace ArcCore.Mathematics
         public fixedQ7 Neg() => new fixedQ7(-rawValue);
         public static fixedQ7 operator +(fixedQ7 v) => v; //Fuck you c#
         public static fixedQ7 operator -(fixedQ7 v) => v.Neg();
+
+        public static fixedQ7 operator ++(fixedQ7 v) => new fixedQ7(v.rawValue + ONE_REPR);
+        public static fixedQ7 operator --(fixedQ7 v) => new fixedQ7(v.rawValue - ONE_REPR);
         #endregion
 
         #region Cast Operators
         public long AsLong() => rawValue >> SHF;
         public float AsFloat() => rawValue * UNMUL;
-        public double AsDouble() => rawValue * UNMUL;
         public decimal AsDecimal() => rawValue * UNMULDEC;
 
         public static implicit operator fixedQ7(int i) => FromInt(i);
@@ -140,7 +144,7 @@ namespace ArcCore.Mathematics
         public static explicit operator float(fixedQ7 f) => f.AsFloat();
 
         public static explicit operator fixedQ7(double d) => FromDouble(d);
-        public static explicit operator double(fixedQ7 f) => f.AsDouble();
+        public static explicit operator double(fixedQ7 f) => f.AsFloat();
 
         public static explicit operator fixedQ7(decimal d) => FromDecimal(d);
         public static explicit operator decimal(fixedQ7 f) => f.AsDecimal();
