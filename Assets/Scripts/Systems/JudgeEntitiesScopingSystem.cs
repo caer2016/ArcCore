@@ -5,6 +5,7 @@ using UnityEngine;
 using ArcCore.Components;
 using ArcCore.MonoBehaviours;
 using ArcCore.Tags;
+using ArcCore;
 
 [UpdateInGroup(typeof(InitializationSystemGroup))]
 [UpdateAfter(typeof(ChunkScopingSystem))]
@@ -20,14 +21,29 @@ public class JudgeEntitiesScopingSystem : SystemBase
         int currentTime = Conductor.Instance.receptorTime;
         var commandBuffer = commandBufferSystem.CreateCommandBuffer();
 
-        Entities.WithNone<WithinJudgeRange, PastJudgeRange>().WithAny<ChartTime,ChartTimeSpan>().ForEach(
+        Entities.WithNone<WithinJudgeRange, PastJudgeRange>().ForEach(
 
-                (Entity entity, in AppearTime appearTime) 
+                (Entity entity, in ChartTime chartTime) 
 
                     => 
 
                 {
-                    if (currentTime >= appearTime.Value)
+                    if (Mathf.Abs(currentTime - chartTime.value) <= Constants.LostWindow)
+                    {
+                        commandBuffer.AddComponent<WithinJudgeRange>(entity);
+                    }
+                }
+
+            ).Run();
+
+        Entities.WithNone<WithinJudgeRange, PastJudgeRange>().ForEach(
+
+                (Entity entity, in ChartTimeSpan chartTimespan)
+
+                    =>
+
+                {
+                    if (Mathf.Abs(currentTime - chartTimespan.start) <= Constants.LostWindow)
                     {
                         commandBuffer.AddComponent<WithinJudgeRange>(entity);
                     }

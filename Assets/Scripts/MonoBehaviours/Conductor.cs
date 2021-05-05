@@ -40,7 +40,7 @@ namespace ArcCore.MonoBehaviours
             Instance = this;
             audioSource = GetComponent<AudioSource>();
             timeOfLastMix = TimeThreadless.Ticks;
-            songLength = (int)Mathf.Round(audioSource.clip.length*1000);
+            songLength = Mathf.RoundToInt(audioSource.clip.length*1000);
         }
         
         public void PlayMusic()
@@ -52,7 +52,7 @@ namespace ArcCore.MonoBehaviours
         public void Update()
         {
             receptorTime = Mathf.RoundToInt(
-                (float)(AudioSettings.dspTime - dspStartPlayingTime + TimeThreadless.TimeSince_T2S(timeOfLastMix)) * 1000)
+                (float)(AudioSettings.dspTime - dspStartPlayingTime + TimeThreadless.TimeSince_T2S(timeOfLastMix)) * 1000f)
                 - offset;
             UpdateCurrentFloorPosition();
             OnTimeCalculated(receptorTime);
@@ -97,13 +97,20 @@ namespace ArcCore.MonoBehaviours
 
             for (int j = 1; j < timingGroups[i].Count; j++)
             {
-                float ffpos = 
-                    timingGroups[i][j - 1].bpm * (timingGroups[i][j].timing - timingGroups[i][j - 1].timing);
+                fixedQ7 fpos = default;
 
-                if (!fixedQ7.NoOverflowOnConvert(ffpos))
-                    throw new OverflowException("Chart floorpos out of range [-2^63, 2^63-1]!");
+                try
+                {
+                    fpos = (fixedQ7)timingGroups[i][j - 1].bpm * (timingGroups[i][j].timing - timingGroups[i][j - 1].timing);
+                }
+                catch(ArithmeticException e)
+                {
+                    //DISPLAY USER ERROR LATER
+                    Debug.LogWarning(e);
+                    return;
+                }
 
-                fixedQ7 fpos = (fixedQ7)ffpos;
+                Debug.Log(fpos);
 
                 timingEventGroups[i].Add(new TimingEvent()
                 {
@@ -116,7 +123,7 @@ namespace ArcCore.MonoBehaviours
 
         public fixedQ7 GetFloorPositionFromTiming(int timing, int timingGroup)
         {
-            if (timing<0) return (fixedQ7)timingEventGroups[0][0].bpm*timing / -1300;
+            if (timing<0) return (fixedQ7)timingEventGroups[timingGroup][0].bpm*timing / -1300;
 
             List<TimingEvent> group = timingEventGroups[timingGroup];
             //caching the index so we dont have to loop the entire thing every time
@@ -134,6 +141,7 @@ namespace ArcCore.MonoBehaviours
 
             groupIndexCache[timingGroup] = i;
 
+            //Debug.Log((group[i].floorPosition + (timing - group[i].timing) * (fixedQ7)group[i].bpm) / -1300);
             return (group[i].floorPosition + (timing - group[i].timing) * (fixedQ7)group[i].bpm) / -1300;
         }
 
@@ -194,12 +202,6 @@ namespace ArcCore.MonoBehaviours
             {
                 currentFloorPosition[group] = GetFloorPositionFromTiming(receptorTime, group);
             }
-        }
-        
-
-        public void DisposeFloorPositionArray()
-        {
-            currentFloorPosition.Dispose();
         }
     }
 }

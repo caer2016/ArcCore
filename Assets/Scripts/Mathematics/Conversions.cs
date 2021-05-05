@@ -67,6 +67,8 @@ namespace ArcCore.Mathematics
 
         public static float2 GetPosAt(float t, float2 start, float2 end, ArcEasing easing)
             => new float2(GetXAt(t, start.x, end.x, easing), GetYAt(t, start.y, end.y, easing));
+        public static float2 GetPosArcRatio(float t, MonoBehaviours.AffArc arc)
+            => GetPosAt(t, arc.StartPos, arc.EndPos, arc.easing);
 
         public static float GetWorldX(float x) 
             => -8.5f * x + 4.25f;

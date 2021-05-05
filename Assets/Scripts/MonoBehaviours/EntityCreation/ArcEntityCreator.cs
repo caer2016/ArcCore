@@ -145,8 +145,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
                     fixedQ7 endfpos = Conductor.Instance.GetFloorPositionFromTiming(arc.timing, arc.timingGroup);
                     float3 end = new float3(
-                        Conversions.GetWorldX(arc.startX),
-                        Conversions.GetWorldY(arc.startY),
+                        Conversions.GetWorldPos(arc.StartPos),
                         (float)endfpos
                     );
 
@@ -154,13 +153,14 @@ namespace ArcCore.MonoBehaviours.EntityCreation
                     {
                         float t = (i + 1) * segmentLength;
 
+                        Debug.Log(t / duration);
+
                         startfpos = endfpos;
                         start = end;
 
                         endfpos = Conductor.Instance.GetFloorPositionFromTiming((int)(arc.timing + t), arc.timingGroup);
                         end = new float3(
-                            Conversions.GetWorldX(Conversions.GetXAt(t / duration, arc.startX, arc.endX, arc.easing)),
-                            Conversions.GetWorldY(Conversions.GetYAt(t / duration, arc.startY, arc.endY, arc.easing)),
+                            Conversions.GetPosArcRatio(t / duration, arc),
                             (float)endfpos
                         );
 
@@ -172,8 +172,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
 
                     endfpos = Conductor.Instance.GetFloorPositionFromTiming(arc.endTiming, arc.timingGroup);
                     end = new float3(
-                        Conversions.GetWorldX(arc.endX),
-                        Conversions.GetWorldY(arc.endY),
+                        Conversions.GetWorldPos(arc.EndPos),
                         (float)endfpos
                     );
 
@@ -233,7 +232,7 @@ namespace ArcCore.MonoBehaviours.EntityCreation
             };
 
             LocalToWorld ltwShadow = ltwArc;
-            ltwShadow.Value.c1.zw = new float2(1, 0);
+            ltwShadow.Value.c2.zw = new float2(1, 0);
 
             //Shear along xy + scale along z matrix
             entityManager.SetComponentData<LocalToWorld>(arcInstEntity, ltwArc);

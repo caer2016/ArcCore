@@ -52,6 +52,9 @@ namespace ArcCore.MonoBehaviours
         public float startY;
         public float endY;
         public int timingGroup;
+
+        public float2 StartPos => new float2(startX, startY);
+        public float2 EndPos => new float2(endX, endY);
     }
 
     public struct AffTrace
@@ -127,7 +130,7 @@ namespace ArcCore.MonoBehaviours
         private void Start()
         {
             // Temporary
-            path = Path.Combine(Application.dataPath, "TempAssets", "5.aff");
+            path = Path.Combine(Application.dataPath, "TempAssets", "2.aff");
             AffError err;
             if ((err = ReadChart(path)) != null)
                 Debug.LogError(err);

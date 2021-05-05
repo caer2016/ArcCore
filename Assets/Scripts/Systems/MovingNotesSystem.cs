@@ -8,6 +8,7 @@ using ArcCore.MonoBehaviours;
 using ArcCore.Tags;
 using Unity.Rendering;
 using ArcCore.Mathematics;
+using UnityEngine;
 
 public class MovingNotesSystem : SystemBase
 {
@@ -15,7 +16,7 @@ public class MovingNotesSystem : SystemBase
     {
         NativeArray<fixedQ7> currentFloorPosition = Conductor.Instance.currentFloorPosition;
 
-        //All note except arcs
+        //All except arcs
         Entities.ForEach((ref Translation translation, in FloorPosition floorPosition, in TimingGroup group) => {
             translation.Value.z = (float)(floorPosition.Value - currentFloorPosition[group.Value]); 
         }).Schedule();
